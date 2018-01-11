@@ -1,0 +1,391 @@
+%\documentclass{segabs}
+\documentclass[manuscript,ulem,graphix,revised]{geophysics}
+
+\usepackage{amsmath}
+\usepackage{graphicx}
+%\usepackage{epstopdf}
+%\usepackage{slashbox}
+\usepackage{hanging}
+\usepackage{mathrsfs}
+\usepackage{marginnote}
+\usepackage{amssymb} 
+\usepackage{url}
+
+%\usepackage{tikz}
+%\usepackage{geometry}
+%\usepackage{setspace}
+%\usepackage[margin=0.8in]{geometry}
+%\usepackage{float}
+%\usepackage{subfig}
+%\usepackage{subcaption}
+
+\usepackage{indentfirst}
+\makeatletter
+\newcommand*{\rom}[1]{\expandafter\@slowromancap\romannumeral #1@}
+\makeatother
+\begin{document}
+
+\title{Vector-based image condition for 3D isotropic elastic reverse time migrations}
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}} 
+
+\address{
+\footnotemark[1]Department of Mathmatics, Harbin Institute of Technology,
+92 Xidazhi St., Nangang Dist., Harbin, Heilongjiang, China 150001
+
+\footnotemark[2]Center for Lithospheric Studies, 
+The University of Texas at Dallas, \\
+800 W Campbell Road (ROC21), Richardson, TX, USA 75080
+}
+
+\author{Wenlong Wang\footnotemark[1] and George A. McMechan\footnotemark[2]}
+
+%\footer{Wang \& McMechan}
+%\lefthead{Wang \& McMechan}
+\righthead{Vector based 3D elastic RTM}
+
+\maketitle
+
+%\clearpage
+%\newpage
+\renewcommand{\figdir}{Fig} % figure directory
+
+\begin{abstract}
+
+Elastic reverse time migration (ERTM) is capable of characterizing subsurface properties better than its acoustic counterpart. P- and S-waves coexist in elastic wavefields, and their separation is required before, or as part of, applying the image conditions. Traditional P- and S-wave separation methods based on divergence and curl operators don't preserve the elastic vector information, and associated polarity reversals of S-wave images are difficult to handle. Thus a preferable workflow for isotropic ERTM should include a vector decomposition of the elastic wavefields and a vector-based image condition that directly uses the signed magnitudes of the decomposed vector wavefields to produce PP and PS images. Our vector-based image condition is an excitation amplitude deconvolutional image condition, that significantly reduces the I/O burden and storage cost that are associated with 3D ERTMs. The vector image condition also includes the calculation of propagation directions of the decomposed P- and S-waves, which can be further utilized to efficiently generate PP and PS angle domain common image gathers (ADCIGs).
+
+\end{abstract}
+
+\section{Introduction}
+
+Elastic wave equations can simulate seismic wave propagation with fewer assumptions than acoustic wave equations, as the former include both shear- and compressional wave propagations. Elastic migration with multicomponent data as input provides the foundation for structure imaging and elastic parameter estimation.
+
+Migration of multicomponent data has been attempted using either ray-based or wave-based solutions. Ray-based examples include Kirchhoff migration \citep{kuo84, dai86, hokstad00}, where PP- and PS-wave traveltimes are calculated and amplitudes are summed along their corresponding traveltime trajectories. The PS separation is done implicitly by using P- and S-velocity models to compute the corresponding traveltimes. Multicomponent elastic Kirchhoff migration has the same limitations as acoustic Kirchhoff migrations; wave phenomena cannot be fully described by ray theory if the geology becomes complicated \citep{gray01}. Wave-based solutions \citep{chang86,chang94,whitmore95}, on the other hand, reconstruct the wavefields with wave equation \citep{wapenaar90} and have fewer limitations than ray-based migrations. \citet{sun01} separate multicomponent data near the surface and use acoustic equations for separate PP and PS migrations. ERTM utilizes elastic wave equations directly, and constructs the source elastic wavefields forward in time and reconstructs the receiver elastic wavefields backward in time by using multicomponent seismic data as initial, and boundary conditions, respectively.
+
+Different image conditions are applied in ERTMs. Early attempts include the excitation time image condition \citep{chang86}, in which the image time is calculated by raytracing from the source point. The crosscorrelation image condition \citep{claerbout85} remains the standard image condition for acoustic RTMs, but in ERTMs, a component-by-component crosscorrelation causes crosstalk between the unseparated P- and S-waves, which leads to artifacts and poses difficulties in interpretation. \citet{yan08} apply divergence and curl operators to separate the P- and S-waves before applying the crosscorrelation image condition and demonstrate improvements in image quality. The PS image with curl operators have polarity reversal problem and needs special treatment \citep{du12} to avoid destructive interference in post-migration stacking.
+
+Recently, P- and S-wave vector decomposition \citep{ma03,zhang07,wenlong_cmp15,wenlong_pv16,zhu17,wenlong17} is gaining popularity. Vector decomposition preserves the vector information in the input elastic wavefield and retains the same physical magnitude and unites, and thus is considered more accurate than using divergence and curl operators which change the phase and amplitude of the input wavefield. \citet{wang_cl16} obtain decomposed elastic vectors from source and receiver wavefield and use a dot product type crosscorrelation image condition to generate images. The dot product, however, leads to image amplitude changes as a function of the open angle between the incident and reflected (converted) waves, causing difficulties in AVA analysis. \citet{wenlong_vct15} use the signed magnitude ratio to construct images in a context of 2D excitation amplitude image condition. This image condition has the flexibility to be modified into a crosscorrelation type image condition (Appendix A), and it applies Poynting vectors \citep{cerveny01} calculated from decomposed P- and S-waves to obtain angle-domain common-image gathers (ADCIGs). The excitation amplitude image condition features a significant reduction in source wavefield storage. In this paper, we extend this image condition to 3D.
+
+P- and S-wave vector decomposition is also possible in anisotropic wavefields \citep{cheng14,wenlong17}. However, we limit the scope of this initial elastic paper to isotropic media as a main goal is the proof of concept. The paper is organized as follows; first the methodology for obtaining decomposed P- and S-wave vectors is described. Then we illustrate the procedure for implementing the 3D vector-based image condition.
+%the relation between our image condition and dot product image condition is discussed. 
+The proposed 3D ERTM procedure is successfully tested on a single-layer model and a portion of the overthrust model \citep{aminzadeh94}. 
+
+\section{Methodology}
+
+The procedure of 3D vector-based ERTM is similar to that of 2D \citep{wenlong_vct15}. The source wavefield is extrapolated before the receiver wavefield extrapolation, and both extrapolations involve P- and S-wavefields decompositions. The decomposed P- and S-wave particle velocities and stresses are used to obtain their propagation directions and reflection polarities. 
+%Due to the different polarizations of PP and PS reflections, their image conditions are also different. 
+In the following subsections, the procedures are explained and illustrated in detail.
+
+\subsection{3D elastic wavefield extrapolation and PS decomposition}
+
+We follow the stress-particle velocity formulation proposed by Madariaga (\citeyear{madariaga76}) and Virieux (\citeyear{virieux84}, \citeyear{virieux86}), which include the general Hooke's law
+\begin{subequations}
+\begin{equation}
+\frac{\partial\tau_{xx}}{\partial t}=(\lambda+2\mu)(\frac{\partial v_x}{\partial x}+\frac{\partial v_y}{\partial y}+\frac{\partial v_z}{\partial z})-2\mu(\frac{\partial v_y}{\partial y}+\frac{\partial v_z}{\partial z}),
+\end{equation}
+\begin{equation}
+\frac{\partial\tau_{yy}}{\partial t}=(\lambda+2\mu)(\frac{\partial v_x}{\partial x}+\frac{\partial v_y}{\partial y}+\frac{\partial v_z}{\partial z})-2\mu(\frac{\partial v_x}{\partial x}+\frac{\partial v_z}{\partial z}),
+\end{equation}
+\begin{equation}
+\frac{\partial\tau_{zz}}{\partial t}=(\lambda+2\mu)(\frac{\partial v_x}{\partial x}+\frac{\partial v_y}{\partial y}+\frac{\partial v_z}{\partial z})-2\mu(\frac{\partial v_x}{\partial x}+\frac{\partial v_y}{\partial y}),
+\end{equation}
+\begin{equation}
+\frac{\partial\tau_{xy}}{\partial t}=\mu(\frac{\partial v_x}{\partial y}+\frac{\partial v_y}{\partial x}),
+\end{equation}
+\begin{equation}
+\frac{\partial\tau_{xz}}{\partial t}=\mu(\frac{\partial v_x}{\partial z}+\frac{\partial v_z}{\partial x}),
+\end{equation}
+\begin{equation}
+\frac{\partial\tau_{yz}}{\partial t}=\mu(\frac{\partial v_y}{\partial z}+\frac{\partial v_z}{\partial y}), 
+\end{equation}
+\label{eqn:stress-velocity1}
+\end{subequations}
+and the equations of motion
+\begin{subequations}
+\begin{equation}
+\rho\frac{\partial v_x}{\partial t}=\frac{\partial\tau _{xx}}{\partial x}+\frac{\partial\tau _{xy}}{\partial y}+\frac{\partial\tau _{xz}}{\partial z},
+\end{equation}
+\begin{equation}
+\rho\frac{\partial v_y}{\partial t}=\frac{\partial\tau _{xy}}{\partial x}+\frac{\partial\tau _{yy}}{\partial y}+\frac{\partial\tau _{yz}}{\partial z},
+\end{equation}
+%\text{and}
+\begin{equation}
+\rho\frac{\partial v_z}{\partial t}=\frac{\partial\tau _{xz}}{\partial x}+\frac{\partial\tau _{yz}}{\partial y}+\frac{\partial\tau _{zz}}{\partial z},
+\end{equation}
+\label{eqn:stress-velocity2}
+\end{subequations}
+where $\tau$ is the stress and $v$ is particle velocity, and the subscripts indicate $x$, $y$ or $z$ coordinates.
+
+%PS decomposition is necessary to get clear PP and PS images free from artifacts. 
+The above stress-particle velocity formulation extrapolates 3D isotropic elastic wavefields with coupled P- and S-waves; if they are not separated either before extrapolation, or as part of the image condition, they will be superimposed as 'crosstalk' artifacts in the migrated images. Instead of using curl and divergence, which produce scalar and vector potentials rather than particle vector components\citep{aki80,yan08}, we decompose the wavefields while preserving their vector information. This can be achieved by calculating an auxiliary P-wave stress $\tau^p$, which is a scalar wavefield similar to pressure in the acoustic wave equation, while solving the complete stress-particle velocity formulation in equations \ref{eqn:stress-velocity1} and \ref{eqn:stress-velocity2}. The calculation for P-wave stress has a scalar form \citep{xiao10} 
+\begin{equation}
+\frac{\partial\tau_{p}}{\partial t}=(\lambda+2\mu)(\frac{\partial v_x}{\partial x}+\frac{\partial v_y}{\partial y}+\frac{\partial v_z}{\partial z}).
+\label{eqn:tau-p}
+\end{equation}
+Then the horizontal and vertical particle velocity components of P-waves, $v^p_{x}$, $v^p_{y}$ and $v^p_{z}$, are calculated from $\tau^p$ by finite differencing
+\begin{subequations}
+\begin{equation}
+\frac{\partial v^p_{x}}{\partial t}=\frac{1}{\rho}\frac{\partial\tau _{p}}{\partial x},
+\end{equation}
+\begin{equation}
+\frac{\partial v^p_{y}}{\partial t}=\frac{1}{\rho}\frac{\partial\tau _{p}}{\partial y},
+\end{equation}
+\text{and}
+\begin{equation}
+\frac{\partial v^p_{z}}{\partial t}=\frac{1}{\rho}\frac{\partial\tau _{p}}{\partial z}.
+\end{equation}
+\label{eqn:vp}
+\end{subequations}
+This gives a complete description of the vector P-wavefield; the S-wavefield can be obtained by subtracting the P-wavefield from the complete wavefield, component-by-component
+\begin{subequations}
+\begin{equation}
+v^s_{x}=v_x-v^p_{x},
+\end{equation}
+\begin{equation}
+v^s_{y}=v_y-v^p_{y},
+\end{equation}
+\text{and}
+\begin{equation}
+v^s_{z}=v_z-v^p_{z},
+\end{equation}
+\label{eqn:vs}
+\end{subequations}
+where $v^s_x$,  $v^s_y$ and $v^s_z$ are the $x$, $y$ and $z$ direction particle velocity components of the S-waves. 
+
+An example of elastic wavefield decomposition is shown in Figure~\ref{fig:homo_snap.eps}, where a composite (P and S) source is placed at the center of a homogeneous model with vp = 2.5 km/s, vs= 1.6 km/s and $\rho$ = 2.1 $\mathrm{kg/cm^3}$. The first row are the x, y and z components of the original elastic wavefield snapshot (Figure~\ref{fig:homo_snap.eps}a-\ref{fig:homo_snap.eps}c); the second and the third rows are the corresponding decomposed components of the P (Figure~\ref{fig:homo_snap.eps}d-\ref{fig:homo_snap.eps}f) and the S (Figure~\ref{fig:homo_snap.eps}g-\ref{fig:homo_snap.eps}i) waves with vector components preserved. 
+\plot{homo_snap.eps}{width=1.0\columnwidth}
+{
+An elastic wavefield decomposition example in a homogeneous model.
+a)-c) are the X, Y and Z components of the original particle velocity components;
+d)-f) are the X, Y and Z components of the decomposed P-wave particle velocity components;
+g)-i) are the X, Y and Z components of the decomposed S-wave particle velocity components;
+}
+
+
+\subsection{3D vector-based elastic image condition}
+
+%Different from the crosscorrelation image condition \citep{wang_cl16},
+Our vector-based image condition is an extension, from 2D to 3D, of the 2D excitation amplitude image condition \citep{nguyen13}. The source wavefield extrapolation needs to be completed prior to the reverse-time receiver wavefield extrapolation. During the source wavefield extrapolation, the image time $T$ is determined as the one-way time, from the source to each grid point, that corresponds to the maximum amplitude during the source wavefield extrapolation over all times
+\begin{equation}
+T(x,y,z)=\mathrm{argmax}[t|A(x,y,z,t)],
+\label{eqn:tmap}
+\end{equation}
+where $A$ is the amplitude of the source wavefield, and $T$ is the time $t$ corresponding to the maximum value of $A$ at each $(x,y,z)$ over all times. The image time $T(x,y,z)$ determines when to apply the image condition at $(x,y,z)$ during the reverse-time receiver wavefield extrapolation, to produce images.
+
+As in the 2D vector-based image condition \citep{wenlong_vct15} the vector magnitude
+\begin{equation}
+A=|(v^p_{src,x}, v^p_{src,y},v^p_{src,z})|
+\label{eqn:amap}
+\end{equation}
+represents the source amplitude, where $v^p_{src,i}$ ($i$ = $x$, $y$ and $z$) are the components of the source P-wavefield particle-velocity vector, and the $|\cdot|$ operator calculates the magnitude of the vector argument. The P-wave particle-velocity vector components of the source wavefield
+\begin{equation}
+\mathbf{V^p_{src}}=(v^p_{src,x}, v^p_{src,y},v^p_{src,z})_{t=T}
+\label{eqn:vctmap1}
+\end{equation}
+are also saved at the time $T$ when the maximum amplitude $\Gamma^p$ is reached at each $(x,y,z)$ location, as well as their corresponding P-wave stress
+\begin{equation}
+\Gamma^p=\tau^p_{t=T}.
+\label{eqn:vctmap2}
+\end{equation}
+The reason for saving both $\mathbf{V^p_{src}}$ and $\Gamma^p$ is that both are necessary for calculating the P-wave propagation directions via Poynting vectors \citep{cerveny01}
+\begin{equation}
+s^{p}_j=-\tau^p v^p_j,
+\label{eqn:poynting_p}
+\end{equation}
+where $v^p_j$ are components of decomposed P-wave particle-velocity, and $s^{p}_j$ are the P-wave Poynting vector components, for $j$ = $x$, $y$, $z$.
+
+%is also saved for calculating the propagation direction using the Poynting vector. The P-wave stress $\tau^p$ has a scalar form and so the saved stress $\Gamma^p$ also has only one value at each grid point. The reason for saving both $\mathbf{V^p_{src}}$ and $\Gamma^p$ is that both are necessary for generating Poynting vectors using equation~\ref{eqn:poynting_p} \citep{dickens11}, and $\mathbf{V^p_{src}}$ is also needed for determining the sign of the reflection coefficient in the following procedure; saving only the maximum amplitude and propagation direction is not sufficient.
+
+
+During the reverse-time receiver extrapolation, the receiver wavefield amplitude is extracted at each grid point at its image time $T(x,y,z)$. We use the signed magnitudes ratio of the decomposed source and receiver particle velocities to construct the image. This procedure is performed in two steps.
+% The propagation directions of reflected P-wave ($\mathbf{s}^{\mathbf{p}}_{\mathbf{rec}}$) and converted S-wave ($\mathbf{s}^{\mathbf{s}}_{\mathbf{rec}}$) are calculated using the Poynting vector equations~\ref{eqn:poynting_p} and \ref{eqn:poynting_s} with separated receiver wavefield vectors. 
+%To make the values of the images physically meaningful, we need to get the angle-dependent reflectivity information from the image condition; the most straightforward method is to use the magnitude of the reconstructed receiver particle velocity wavefield divided by that of source wavefield. However, magnitudes are always positive, so we also need to know the corresponding sign of reflection. Thus the application of the vector-based image condition can be decomposed into two steps:
+
+The first step is to calculate the signs of the reflections (both PP and PS) as a function of position, incident angle and azimuth angle.
+The signs of both PP and PS reflections can be determined from the principle that the incident and the reflected waves have the same polarity for a negative reflection coefficient, and opposite polarity for a positive reflection coefficient \citep{aki80}. For 3D models, the calculation for signs of reflections is more complicated. 
+We assume only P-waves are present in the source wavefield, so theoretically, the reflections are all P-P and PSV types, and the particle velocity directions, propagation directions, and reflector normal are all in the same plane for the reflection at each grid point. The azimuth angle is obtained from 
+\begin{equation}
+\phi=\mathrm{atan2}[s^{p}_{(src)y},\ s^{p}_{(src)x}]
+\label{eqn:azm_agl}
+\end{equation}
+where $s^{p}_{(src)x}$ and $s^{p}_{(src)y}$ are the $x$ and $y$ components of the P-wave Poynting vectors (equation~\ref{eqn:poynting_p}) calculated from the source wavefield at the image time $T$ of each grid point. For PP reflections, the incident and reflection angles are the same in isotropic medium. The incident angle $\theta$ can then be solved from the vector dot product geometrical relation 
+\begin{equation}
+\mathbf{\tilde{s}^{p}_{src}}\cdot \mathbf{\tilde{s}^p_{rec}}=|\mathbf{\tilde{s}^{p}_{src}}||\mathbf{\tilde{s}^p_{rec}}|\mathrm{cos}(2\theta)
+\label{eqn:inc_agl}
+\end{equation}
+where the $\mathbf{\tilde{s}^{p}_{src}}$ and $\mathbf{\tilde{s}^p_{rec}}$ are the normalized decomposed P-wave Poynting vectors of the source and the receiver wavefields at the image time $T$, respectively. Then the reflector normal direction $\mathbf{n}$ can be obtained from
+% solving the equation system~\ref{eqn:rfl_nor}. 
+\begin{equation}
+\mathbf{n}=\mathbf{\tilde{s}^p_{rec}}-\mathbf{\tilde{s}^{p}_{src}}.
+\end{equation}
+%\begin{equation}
+%\left\{
+%\begin{array}{lr}
+%\mathbf{s^{p}_{src}}\cdot \mathbf{n}=|\mathbf{s^{p}_{src}}|\mathbf{n}|cos(\theta) \\
+%\mathbf{s^p_{rec}}\cdot \mathbf{n}=-|\mathbf{s^p_{rec}}|\mathbf{n}|cos(\theta) \\
+%|\mathbf{n}|=1
+%\end{array}
+%\right.
+%\label{eqn:rfl_nor}
+%\end{equation}
+Similarly, the reflector dip direction $\mathbf{d}$ can be calculated from
+\begin{equation}
+\mathbf{d}=\mathbf{\tilde{s}^p_{rec}}+\mathbf{\tilde{s}^{p}_{src}}.
+\end{equation}
+% solving the equation system:
+%\begin{equation}
+%\left\{
+%\begin{array}{lr}
+%\mathbf{s^{p}_{src}}\cdot \mathbf{r}=|\mathbf{s^{p}_{src}}|\mathbf{r}|sin(\theta) \\
+%\mathbf{s^p_{rec}}\cdot \mathbf{r}=|\mathbf{s^p_{rec}}|\mathbf{r}|sin(\theta) \\
+%|\mathbf{r}|=1
+%\end{array}
+%\right.
+%\label{eqn:rfl_nor1}
+%\end{equation}
+ 
+
+\plot{3D_comb.eps}{width=1.0\columnwidth}
+{
+Kinematic example of (a) PP and (b) PS reflection particle velocities and corresponding polarities (3D). 
+}
+
+The polarity of a PP reflection can be observed through its particle motion normal to the reflector (Figure~\ref{fig:3D_comb.eps}a). To determine if the polarity of the PP reflection changes at a grid point, 
+the recorded source P-wave particle velocity components $\mathbf{V}^{\mathbf{p}}_{\mathbf{src}}$ can be projected to the reflector normal direction $\mathbf{n}$, to give the projected vector $\hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}$. Then 
+the decomposed P-wave particle velocity components of the receiver wavefield at its image time $\mathbf{V}^{\mathbf{p}}_{\mathbf{rec}}$ can also be projected to the reflector normal direction $\mathbf{n}$ and get $\hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{rec}}$. The sign of PP reflection at each grid point can be obtained by
+\begin{equation}
+%\begin{aligned}
+\mathrm{sgn_{pp}}(x,y,z,\theta, \phi)=\begin{cases}
+ +1, \ \mathrm{if} \  \hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}(x,y,z) \cdot \hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{rec}}(x,y,z)<0 , \\
+ -1, \ \mathrm{if}  \ \hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}(x,y,z) \cdot \hat{\mathbf{V}}^{\mathbf{p}}_{\mathbf{rec}}(x,y,z)>0 .
+\end{cases}
+%\end{aligned}
+\label{eqn:sgn_pp}
+\end{equation}
+%if both projections ($\tilde{\mathbf{v}}_{\mathbf{sp}}$ and $\tilde{\mathbf{v}}_{\mathbf{rp}}$) are pointing at the same direction, which means the polarity doesn't change, and the sign of PP reflection at this incident angle is negative, and opposite directions means positive reflections (Figure~\ref{fig:3D_comb.eps}a). 
+
+The polarity change of a PS reflection is determined from its particle motion parallel to the reflector (Figure~\ref{fig:3D_comb.eps}b). Similar to the procedure to get PP reflection signs, we project the recorded source P-wave particle velocity components $\mathbf{V}^{\mathbf{p}}_{\mathbf{src}}$ and the receiver S-wave particle velocity components $\mathbf{V}^{\mathbf{s}}_{\mathbf{rec}}$ on the reflector $\mathbf{r}$ to get their projections $\check{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}$ and $\check{\mathbf{V}}^{\mathbf{s}}_{\mathbf{rec}}$, and the sign of PS reflection can be obtained
+\begin{equation}
+\mathrm{sgn_{ps}}(x,y,z,\theta,\phi)=\begin{cases}
+ +1, \ \mathrm{if} \ \check{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}(x,y,z) \cdot \check{\mathbf{V}}^{\mathbf{s}}_{\mathbf{rec}}(x,y,z)<0, \\ 
+ -1, \ \mathrm{if}  \ \check{\mathbf{V}}^{\mathbf{p}}_{\mathbf{src}}(x,y,z) \cdot \check{\mathbf{V}}^{\mathbf{s}}_{\mathbf{rec}}(x,y,z)>0 .
+\end{cases}
+\label{eqn:sgn_ps}
+\end{equation}
+
+The second step is to calculate reflectivities of PP and PS reflections. With knowledge of the sign of a PP or a PS reflection, we use the magnitude of the receiver (reflected) P- or S-waves divided by the source (incident) magnitude to represent the absolute value of reflectivity \citep{sheriff95}, and it is multiplied by the sign of PP or PS reflection to get the signed reflectivity.
+\begin{equation}
+\begin{aligned}
+r_{pp}(x,y,z,\theta,\phi)&=\mathrm{sgn_{pp}}(x,y,z,\theta,\phi)\frac{|\mathbf{V^p_{rec}}(x,y,z)|}{|\mathbf{V^p_{src}}(x,y,z)|},\\
+r_{ps}(x,y,z,\theta,\phi)&=\mathrm{sgn_{ps}}(x,y,z,\theta,\phi)\frac{|\mathbf{V^s_{rec}}(x,y,z)|}{|\mathbf{V^p_{src}}(x,y,z)|},
+\end{aligned}
+\label{eqn:reflectivity}
+\end{equation}
+where $r_{pp}$ and $r_{ps}$ are PP and PS reflection coefficients.% $|\cdot|$ is the magnitude of a vector.
+
+The differences and relations between the proposed image condition and the dot product image condition \citep{wang_cl16} can be found in Appendix A.
+
+
+
+\section{Synthetic Tests}
+
+The 3D vector-based prestack image condition is first tested on a flat layered elastic model (Figure~\ref{fig:3D_layermodel.eps}). The upper layer has Vp = 2.5 $\mathrm{km/s}$,  Vs = 1.6 $\mathrm{km/s}$ and  $\mathrm{\rho}$ = 2.1 $\mathrm{g/cm^3}$; the lower layer has  Vp = 2.8 $\mathrm{km/s}$,  Vs = 1.7 $\mathrm{km/s}$ and  $\mathrm{\rho}$ = 2.2 $\mathrm{g/cm^3}$.
+The wavefields are extrapolated with an eighth-order in space, second-order in time, stress-particle-velocity, staggered-grid, finite-difference solution (equations~\ref{eqn:stress-velocity1} and \ref{eqn:stress-velocity2}). Convolutional perfectly matched layer (CPML) absorbing boundary conditions \citep{komatitsch07} are used on all six grid edges to reduce unwanted reflections.
+The model (Figure~\ref{fig:3D_layermodel.eps}) has 5 m grid spacing in the x- y- and z-directions. One explosive source with 15 Hz dominant frequency is located at (x, y, z) = (0.64, 0.64, 0.0) km; 256 $\times$ 256 receivers are evenly spaced along the surface (z = 0.0 km) from  (x, y) = (0.0, 0.0) km to (1.28, 1.28) km, with 5 m spacing in both x- and y-directions; the time sample increment is 0.5 ms. The source is recorded by all receivers.
+\plot{3D_layermodel.eps}{width=1.0\columnwidth}
+{
+Two-layer model; the red spot is the source location. The ADCIGs are obtained at surface positions 1 (0.84, 0.84) km, 2 (0.44, 0.84) km and 3 (0.74, 0.74) km as marked with blue arrows. 
+}
+
+We use smoothed velocity and density models for ERTM, with the 3D vector-based image condition applied. The migrated PP and PS images are shown in Figure~\ref{fig:3D_rfl_comb.eps}a and \ref{fig:3D_rfl_comb.eps}b. The PS image (Figure~\ref{fig:3D_rfl_comb.eps}b) has higher resolution and wider illumination than the PP image (Figure~\ref{fig:3D_rfl_comb.eps}a) because S-waves have shorter wavelength the P-waves. Note that both the PP and PS images are single component (equation~\ref{eqn:reflectivity}), and the PS image has consistent polarities across the source position, which are essential advantages over using curl operators. 
+
+\plot{3D_rfl_comb.eps}{width=0.9\columnwidth}
+{
+PP (a) and PS (b) images obtained using 3D ERTM of one shot using the vector based image conditions.
+}
+
+We also obtain PP and PS ADCIGs at three representative positions (as marked on Figure~\ref{fig:3D_layermodel.eps}).  As the data has only one shot, the migrated ADCIGs collapse to one point at the depth of the migrated image. ADCIGs at positions 1 and 2 (Figure~\ref{fig:3D_layermodel.eps}) have the same incident angle but different azimuth angles; 1 and 3 have the same azimuth angle but different incident angles.  We demonstrate the PP (Figures~\ref{fig:ADCIGs2.eps}a, c and e) and PS (Figures~\ref{fig:ADCIGs2.eps}b, d and f) ADCIG slices in a polar coordinate at the image depth (obtained by picking the maximum absolute value within a depth window). The incidence angles are indicated from the inner circle ($0^{\circ}$) to outer circle ($60^{\circ}$); the azimuth angles have a range from $0^{\circ}$ to $360^{\circ}$ (counterclockwise). The image positions on the polar plots (Figure~\ref{fig:ADCIGs2.eps}) indicate the incidence and azimuth angles of the reflections, and can be easily verified by the geometrical relations between the source and the ADCIG reflection positions.
+
+
+\plot{ADCIGs2.eps}{width=0.9\columnwidth}
+{
+PP (a, c and e) and PS (b, d and f) ADCIG slices at depth (z = 0.60 km) at three representative positions 1 (0.94, 0.64) km, 2 (0.64, 0.94) km and 3 (0.79, 0.64) km,  respectively.
+}
+
+In the second test, we construct the 3D example using the SEG$\backslash$EAGE 3-D overthrust model (\url{http://geodus1.ta.tudelft.nl/seage3dm/}), which is an acoustic model containing the P-velocity ($V_{P}$). To construct an elastic model, we approximate $V_{S}$ by dividing the $V_{P}$ by 2 at each grid point.  The density is set to be a constant 2.4 $\mathrm{g/cm^3}$. Figure~\ref{fig:overthrust.eps} shows three orthogonal slices through the $V_{P}$ volume containing the portion of the model used for this example; the size of this reduced volume (in grid points) is $151\times 151 \times 140$, and the spatial interval of the model is dx = dy = dz = 20 m. 64 sources are evenly placed in a block difined by x = 1.1 km to 2.0 km, and y = 1.1 km to 2.0 km, and z = 0.08 km. The source interval in both x and y directions is 0.1 km. 151 $\times$ 151 receivers are evenly placed over the surface with a spacing of 20 m.
+The migrated PP and PS images are shown in Figures~\ref{fig:rfl_p.eps} and \ref{fig:rfl_s.eps}, respectively.
+\plot{overthrust.eps}{width=0.9\columnwidth}
+{
+A portion of the overthrust model (Vp).
+}
+
+\plot{rfl_p.eps}{width=0.9\columnwidth}
+{
+Migrated PP image.
+}
+\plot{rfl_s.eps}{width=0.9\columnwidth}
+{
+Migrated PS image.
+}
+
+Figure~\ref{fig:over_adcig.eps} shows the PP (upper row) and PS (lower row) ADCIGs evenly binned into six azimuth angle bins from $\mathrm{0^\circ}$ to $\mathrm{360^\circ}$. The events in the ADCIGs are flat over incident angles because smoothed velocity and density models are used for ERTM. Both migrated images (Figures~\ref{fig:rfl_p.eps} and \ref{fig:rfl_s.eps}) and ADCIGs (Figure~\ref{fig:over_adcig.eps}) give satisfactory migration results.
+\plot{over_adcig.eps}{width=1.1\columnwidth}
+{
+PP (a) and PS (b) ADCIGs plotted in six pie shape azimuth angle bins from $\mathrm{0^\circ}$ to $\mathrm{360^\circ}$.
+}
+
+\section{Discussion}
+
+A vector-based image condition with similarities to the excitation amplitude image condition \citep{nguyen13} is implemented, but there are several important differences between them. First, the magnitudes of the elastic particle velocity vectors are used instead of amplitudes in acoustic wavefields. Second, for acoustic RTM using the excitation amplitude image condition, only the maximum amplitude map and corresponding image time map needs to be stored during the source wavefield extrapolation, while in vector-based image condition for elastic RTM, in addition to the image time map, all the P-wave particle velocity and stress components at the maximum magnitude of each grid point are required to build the final image. Third, because the magnitudes of the particle velocity vectors are always positive, to get accurate reflectivity information, signs of the reflections (both PP and PS) need to be determined and multiplied by the absolute values of reflectivity in the image condition. The output of the vector-based image condition contains approximate angle-dependent reflectivity information; to increase the accuracy of the reflectivity, compensations for transmission loss and attenuation loss \citep{deng07,deng08} are also necessary.
+
+The proposed image condition uses the relation between P- and S-wave directions and their corresponding polarization directions, which is valid in isotropic media. In anisotropic media, the relation is more complicated, and an extension of this image condition to anisotropic ERTM needs further investigations.
+
+
+\section{Conclusions}
+
+A vector-based ERTM image condition is extended from 2D to 3D. P- and S-waves are decomposed in the vector domain during both source and receiver wavefield extrapolation. Propagation directions for P- and S-waves are efficiently calculated using Poynting vectors with the decomposed P- and S-wave vectors as input, and make the process of generating ADCIGs much cheaper compared with other existing methods that involve extracting propagation directions from wavefronts. 
+The vector-based image condition is based on the prestack excitation amplitude image condition which is a type of deconvolution image condition, and is efficient and robust.
+
+
+\section{Acknowledgments}
+
+The research leading to this paper is supported by the Sponsors of the
+UT-Dallas Geophysical Consortium and the Outstanding Young Talent Program (AUGA5710053217) from the Harbin Institute of Technology. A portion of the computations were done at the Texas Advanced Computing Center. This paper is Contribution No. xxxx
+from the Department of Geosciences at the University of Texas at Dallas.
+
+\append{Relation and Differences between our proposed image condition and the dot product image condition}
+
+There are two differences between the proposed image condition with the vector dot product image condition \citep{wang_cl16,zhu17}. First, the dot product image condition is a crosscorrelation-type image condition, which requires heavy I/O for saving and reading the source wavefields, while the proposed image condition is a excitation amplitude image condition that needs only a few maps (image time and some amplitude) from the source wavefield extrapolation. Second, although both image conditions involve projection from vector wavefields to scalar images, the dot product image condition applies a dot product, whereas our image condition calculates the signed magnitudes from the wavefields.
+
+The image condition \ref{eqn:reflectivity} can be easily modified to be a crosscorrelation type image condition
+\begin{equation}
+\begin{aligned}
+I_{pp}(x,y,z)&=\int_0^{T_{sum}}\mathrm{sgn_{pp}}(x,y,z)|\mathbf{V^p_{rec}}(x,y,z,t)||\mathbf{V^p_{src}}(x,y,z,t)|dt,\\
+I_{ps}(x,y,z)&=\int_0^{T_{sum}}\mathrm{sgn_{ps}}(x,y,z)|\mathbf{V^s_{rec}}(x,y,z,t)||\mathbf{V^p_{src}}(x,y,z,t)|dt,
+\end{aligned}
+\label{eqn:crsc}
+\end{equation}
+where, $I_{pp}$ and $I_{ps}$ are the images, and for simplicity the incident angle $\theta$ and azimuth angle $\phi$ are not indicated; $|\mathbf{v^p_{src}}|$ is the magnitude of decomposed P-wave source wavefield with all the particle velocity time snapshots stored. Neither the image amplitudes nor the units are physically correct and so cannot be interpreted as reflection coefficients.
+
+The non-normalized dot product image condition can be written as
+\begin{equation}
+\begin{aligned}
+I_{pp}(x,y,z)&=\int_0^{T_{sum}}\mathbf{V^p_{rec}}(x,y,z,t)\cdot \mathbf{V^p_{src}}(x,y,z,t)dt,\\
+I_{ps}(x,y,z)&=\int_0^{T_{sum}}\mathbf{V^s_{rec}}(x,y,z,t)\cdot \mathbf{V^p_{src}}(x,y,z,t)dt.
+\end{aligned}
+\label{eqn:dprdt}
+\end{equation}
+Recall that 
+\begin{equation}
+\mathbf{V_{rec}}\cdot \mathbf{V_{src}}=|\mathbf{V_{rec}}||\mathbf{V_{src}}|cos(2\theta),
+\label{eqn:a3}
+\end{equation}
+where the $\mathbf{V_{rec}}$ and $\mathbf{V_{src}}$ are the decomposed (P or S) receiver and source wavefield; $2\theta$ is the open angle, and the $\mathrm{cos}(2\theta)$ causes an image amplitude change which is not related to the subsurface properties. The only difference between image condition \ref{eqn:crsc} and \ref{eqn:a3} is that $\mathrm{cos}(2\theta)$ is replaced by a sgn function in \ref{eqn:crsc} that is calculated in equations~\ref{eqn:sgn_ps}.
+
+
+\newpage
+
+\bibliographystyle{seg}  % style file is seg.bst
+\bibliography{att}
+
+\end{document}
