@@ -25,8 +25,8 @@
 \makeatother
 \begin{document}
 
-\title{Vector-based image condition for 3D isotropic elastic reverse time migrations}
-
+\title{\uline{3D isotropic elastic reverse time migrations using signed magnitudes of elastic components}}
+\marginnote{[1]}
 \renewcommand{\thefootnote}{\fnsymbol{footnote}} 
 
 \address{
@@ -62,10 +62,10 @@ Elastodynamic wave equations can simulate seismic wave propagation with fewer as
 
 Migration of multicomponent data has been attempted in the past, using either ray-based or wave-based solutions. Ray-based examples include Kirchhoff migration \citep{kuo84, dai86, hokstad00}, where PP- and PS-wave traveltimes are calculated and amplitudes are summed along their corresponding traveltime trajectories. The PS separation is done implicitly by using P- and S-velocity models to compute the corresponding traveltimes. Multicomponent elastic Kirchhoff migration has the same limitations as acoustic Kirchhoff migrations; wave phenomena cannot be fully described by ray theory if the geology becomes complicated \citep{gray01}. Wave-based solutions \citep{chang86,chang94,whitmore95}, on the other hand, reconstruct the wavefields with a wave equation \citep{wapenaar90}, and have fewer limitations than ray-based migrations. \citet{sun01} separate multicomponent data near the surface and use acoustic equations for separate PP and PS migrations. Elastic reverse time migration (ERTM) utilizes elastic wave equations directly, and constructs the source elastic wavefields forward in time and reconstructs the receiver elastic wavefields backward in time by using multicomponent seismic data as initial, and boundary conditions, respectively.
 
-Different image conditions are applied in ERTMs. Early attempts include the excitation time image condition \citep{chang86}, in which the image time is calculated by raytracing from the source point. The crosscorrelation image condition \citep{claerbout85} remains the standard image condition for acoustic RTMs, but in ERTMs, a component-by-component crosscorrelation causes crosstalk between the unseparated P- and S-waves leads to artifacts which pose difficulties in interpretation. \citet{yan08} apply divergence and curl operators to separate the P- and S-waves before applying the crosscorrelation image condition and demonstrate improvements in image quality. The PS image with curl operators have a polarity reversal problem and needs special treatment \citep{du12} to avoid destructive interference in post-migration stacking.
+Different image conditions are applied in ERTMs. Early attempts include the excitation time image condition \citep{chang86}, in which the image time is calculated by raytracing from the source point. The crosscorrelation image condition \citep{claerbout85} remains the standard image condition for acoustic RTMs, but in ERTMs, a component-by-component crosscorrelation causes crosstalk between the unseparated P- and S-waves leads to artifacts which pose difficulties in interpretation. \citet{yan08} apply divergence and curl operators to separate the P- and S-waves before applying the crosscorrelation image condition and demonstrate improvements in image quality. \marginnote{[6]}\uline{The PS image with curl operators have a polarity reversal problem and needs special treatment \mbox{\citep{du12,du14}} to avoid destructive interference in post-migration stacking. }
 
 Recently, P- and S-wave vector decomposition \citep{ma03,zhang07,wenlong_cmp15,wenlong_pv16,zhu17,wenlong17} is gaining popularity. Vector decomposition preserves the vector information in the input elastic wavefield and retains the same physical magnitude and units, and thus is considered to be more accurate than using divergence and curl operators which change the phase and amplitude of the input wavefield. \citet{wang_cl16} obtain decomposed elastic vectors from a source and receiver wavefield and use a dot product type of crosscorrelation image condition to generate images. The dot product, however, leads to image amplitude changes as a function of the open angle between the incident and reflected (converted) waves, causing difficulties in AVA analysis. \citet{wenlong_vct15,wenlong_3d16} use the signed magnitude ratio to construct images by a 2D (or 3D) excitation amplitude image condition. 
-This image condition applies Poynting vectors \citep{cerveny01} calculated from decomposed P- and S-waves to obtain angle-domain common-image gathers (ADCIGs). The excitation amplitude image condition features a significant reduction in the source wavefield storage and the I/O burden, but it requires sophisticated improvements to include multipathing \citep{jin15}, which is common in complicated models. In this paper, we extend the vector-based image condition to a more robust source-normalized crosscorrelation type image condition and apply it to 3D ERTMs.
+This image condition applies Poynting vectors \citep{cerveny01} calculated from decomposed P- and S-waves to obtain angle-domain common-image gathers (ADCIGs). \marginnote{[4]}\uline{The excitation amplitude image condition \mbox{\citep{wenlong_vct15}} features a significant reduction in the source wavefield storage and the I/O burden, but it requires sophisticated improvements to include multipathing \mbox{\citep{jin15}}, which is common in complicated models. In this paper, we extend the vector-based image condition to a more robust source-normalized crosscorrelation type image condition and apply it to 3D ERTMs.}
 
 P- and S-wave vector decomposition is also possible in anisotropic wavefields \citep{cheng14,wenlong17}. However, we limit the scope of this initial elastic paper to isotropic media, as a main goal is the proof of concept. The paper is organized as follows; first the methodology for obtaining decomposed P- and S-wave vectors is described. Then we illustrate the procedure for implementing the 3D vector-based source-normalized crosscorrelation image condition.
 %the relation between our image condition and dot product image condition is discussed. 
@@ -215,7 +215,7 @@ where $s^{p}_{(src)x}$ and $s^{p}_{(src)y}$ are the $x$ and $y$ components of th
 \mathbf{\tilde{S}^{p}_{src}}\cdot \mathbf{\tilde{S}^p_{rec}}=|\mathbf{\tilde{S}^{p}_{src}}||\mathbf{\tilde{S}^p_{rec}}|\mathrm{cos}(2\theta)
 \label{eqn:inc_agl}
 \end{equation}
-where the $\mathbf{\tilde{S}^{p}_{src}}$ and $\mathbf{\tilde{S}^p_{rec}}$ are the normalized decomposed P-wave Poynting vectors of the source and the receiver wavefields, respectively. $|\cdot|$ represents the magnitude of a vector. Then the reflector normal direction $\mathbf{n}$ can be obtained from
+where the $\mathbf{\tilde{S}^{p}_{src}}$ and $\mathbf{\tilde{S}^p_{rec}}$ are the normalized decomposed P-wave Poynting vectors of the source and the receiver wavefields, respectively. \marginnote{[]} \uline{During the normalization, a threshold is applied on the magnitudes of the Poynting vectors, which are used as denorminators for normalization, to prevent division by zero.}  $|\cdot|$ represents the magnitude of a vector. \marginnote{[4]}\uline{As proposed by \mbox{\citet{du14}}, the reflector normal direction $\mathbf{n}$ can be obtained from}
 % solving the equation system~\ref{eqn:rfl_nor}. 
 \begin{equation}
 \mathbf{n}=\mathbf{\tilde{S}^p_{rec}}-\mathbf{\tilde{S}^{p}_{src}}.
@@ -234,6 +234,7 @@ Similarly, the reflector dip direction $\mathbf{d}$ can be calculated from
 \begin{equation}
 \mathbf{d}=\mathbf{\tilde{S}^p_{rec}}+\mathbf{\tilde{S}^{p}_{src}}.
 \end{equation}
+\marginnote{[5]}\uline{To stabilize the Poynting vectors, we apply a median filter to the calculated propagation directions in the space domain \mbox{\citep{jin14}}.}
 % solving the equation system:
 %\begin{equation}
 %\left\{
@@ -275,6 +276,7 @@ The polarity change of a PS reflection is determined from its particle motion pa
 \end{cases}
 \label{eqn:sgn_ps}
 \end{equation}
+\marginnote{[6]}\uline{This is different from the polarity correction strategy proposed by \mbox{\citet{du12, du14}}, in which the the polarity reversal problem is brought by the curl operators, while in our approach, the elastic components are preserved after decomposition, no curl operators are involved, so the polarity doesn't need to be corrected. Equation~\ref{eqn:sgn_ps} is designed to find the sign of PS reflection coefficients.}
 
 With knowledge of the signs of a PP or a PS reflections, we use the magnitude of the receiver (reflected) P- or S-waves crosscorrelated with the source (incident) magnitude to obtain an image, and then it is source normalized to represent the reflectivity \citep{sheriff95} at each image point.
 %\begin{equation}
@@ -402,7 +404,10 @@ where $\mathbf{V_{rec}}$ and $\mathbf{V_{src}}$ are the decomposed (P or S) rece
 \mathbf{V_{rec}}\cdot \mathbf{V_{src}}=|\mathbf{V_{rec}}||\mathbf{V_{src}}|\mathrm{cos}(\psi),
 \label{eqn:a3}
 \end{equation}
-where $\psi$ is the open angle between the incident and reflected (converted) waves, and the $\mathrm{cos}(\psi)$ causes an image amplitude change which is not related to the subsurface properties. The only difference between image conditions (\ref{eqn:crsc1}) and (\ref{eqn:crsc2}), and image conditions (\ref{eqn:dprdt1}) and (\ref{eqn:dprdt2}) is that $\mathrm{cos}(\psi)$ is replaced by a sgn function in (\ref{eqn:crsc1}) and (\ref{eqn:crsc2}) that is pre-calculated in equations~\ref{eqn:sgn_ps}.
+where $\psi$ is the open angle between the incident and reflected (converted) waves, and the $\mathrm{cos}(\psi)$ causes an image amplitude change which is not related to the subsurface properties. 
+\marginnote{[2]}\uline{One solution is proposed by \mbox{\citet{du17}} to correct the image amplitudes by dividing the $I_{pp}$ and $I_{ps}$ by $(cos(\psi) + \epsilon^2)$ (Equation~13 in \mbox{\citet{du17}}), where $\epsilon^2$ is a small number that prevends division by zero. The correction is valid if the calculation of the open angle $\psi$ is robust and accurate. 
+Our image condition is theoretically equivalent to the amplitude corrected image condition in \mbox{\citet{du17}}. Besides, there is no need for amplitude correction in our proposed image condition, and $\psi$ doesn't need to accurate as it is only used for sign determination. }
+The only difference between image conditions (\ref{eqn:crsc1}) and (\ref{eqn:crsc2}), and image conditions (\ref{eqn:dprdt1}) and (\ref{eqn:dprdt2}) is that $\mathrm{cos}(\psi)$ is replaced by a sgn function in (\ref{eqn:crsc1}) and (\ref{eqn:crsc2}) that is pre-calculated in equations~\ref{eqn:sgn_ps}.
 
 
 \newpage
